@@ -52,6 +52,20 @@ class SharedPathService:
             selected_path = f"/{selected_path}"
         return posixpath.normpath(selected_path)
 
+    @staticmethod
+    def _canonical_shared_path(path):
+        """Normalize Baidu share paths before comparing them.
+
+        Baidu may return the same share mount path both with and without a
+        leading slash. Keeping comparisons relative also avoids leaking the
+        internal ``sharelink0-*`` mount directory into the destination.
+        """
+        normalized = str(path or "").strip().replace("\\", "/")
+        if not normalized or normalized == "/":
+            return ""
+        normalized = posixpath.normpath(f"/{normalized.lstrip('/')}")
+        return "" if normalized == "/" else normalized.lstrip("/")
+
     def select_shared_path(self, shared_paths, selected_path):
         """Return the single share entry selected by a Baidu ``#list/path`` fragment."""
         paths = list(shared_paths or [])
@@ -92,20 +106,20 @@ class SharedPathService:
 
         raise ValueError(f"分享链接指定的子目录不存在或无权访问: {target_path}")
 
-    @staticmethod
-    def _resolve_shared_root(shared_paths):
+    @classmethod
+    def _resolve_shared_root(cls, shared_paths):
         root_candidates = []
         for shared_path in shared_paths or []:
             raw_path = getattr(shared_path, "path", "")
             if not raw_path:
                 continue
 
-            normalized_path = str(raw_path).rstrip("/") or str(raw_path).strip()
-            if not normalized_path or normalized_path == "/":
+            normalized_path = cls._canonical_shared_path(raw_path)
+            if not normalized_path:
                 continue
 
-            parent_path = os.path.dirname(normalized_path)
-            if parent_path and parent_path != "/":
+            parent_path = posixpath.dirname(normalized_path)
+            if parent_path:
                 root_candidates.append(parent_path)
             elif getattr(shared_path, "is_dir", False):
                 root_candidates.append(normalized_path)
@@ -114,32 +128,32 @@ class SharedPathService:
             return ""
 
         try:
-            shared_root = os.path.commonpath(root_candidates)
+            shared_root = posixpath.commonpath(root_candidates)
         except ValueError:
             return ""
 
-        if shared_root in ("", "/"):
+        if not shared_root or shared_root == ".":
             return ""
-        return shared_root.rstrip("/")
+        return f"/{shared_root.strip('/')}"
 
-    @staticmethod
-    def _trim_shared_root(shared_file_path, shared_root=""):
+    @classmethod
+    def _trim_shared_root(cls, shared_file_path, shared_root=""):
         if not shared_file_path:
             return ""
 
-        normalized_path = str(shared_file_path).strip()
+        normalized_path = cls._canonical_shared_path(shared_file_path)
         if not normalized_path:
             return ""
 
-        normalized_root = str(shared_root or "").rstrip("/")
+        normalized_root = cls._canonical_shared_path(shared_root)
         if normalized_root:
             root_prefix = f"{normalized_root}/"
             if normalized_path == normalized_root:
                 return ""
             if normalized_path.startswith(root_prefix):
-                return normalized_path[len(root_prefix) :].lstrip("/")
+                return normalized_path[len(root_prefix) :]
 
-        return normalized_path.lstrip("/")
+        return normalized_path
 
     @classmethod
     def _new_scan_stats(cls):

@@ -532,6 +532,45 @@ class SharedPathServiceTests(unittest.TestCase):
             self.service._trim_shared_root("/single-share/单集.mp4", "/single-share"),
         )
 
+    def test_trim_shared_root_accepts_mixed_leading_slash_forms(self):
+        root = "/sharelink0-800191915763097/高级信息系统项目管理师"
+        relative_file = (
+            "sharelink0-800191915763097/高级信息系统项目管理师/01-27年5月【更新中】/07、mj/file.pdf"
+        )
+
+        self.assertEqual(
+            "01-27年5月【更新中】/07、mj/file.pdf",
+            self.service._trim_shared_root(relative_file, root),
+        )
+        self.assertEqual(
+            "01-27年5月【更新中】/07、mj/file.pdf",
+            self.service._trim_shared_root(f"/{relative_file}", root.lstrip("/")),
+        )
+
+    def test_list_shared_files_does_not_leak_sharelink_mount_without_leading_slash(self):
+        selected_dir = SimpleNamespace(
+            path=("/sharelink0-800191915763097/高级信息系统项目管理师/01-27年5月【更新中】"),
+            is_dir=True,
+            uk=1,
+            share_id=2,
+            bdstoken="token",
+        )
+        nested_file = SimpleNamespace(
+            path=(
+                "sharelink0-800191915763097/高级信息系统项目管理师/"
+                "01-27年5月【更新中】/07、mj/file.pdf"
+            ),
+            is_dir=False,
+            fs_id=11,
+            size=456,
+            md5="def",
+        )
+        self.service.client.list_shared_paths.return_value = [nested_file]
+
+        files = self.service.list_shared_files([selected_dir])
+
+        self.assertEqual("01-27年5月【更新中】/07、mj/file.pdf", files[0]["path"])
+
     def test_list_shared_files_trims_root_without_hardcoded_sharelink_prefix(self):
         shared_paths = [
             SimpleNamespace(

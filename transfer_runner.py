@@ -3,6 +3,7 @@
 
 import json
 import os
+import posixpath
 import sys
 import tempfile
 import time
@@ -421,8 +422,18 @@ def log_transfer_failed_files(logger, transfer_failed_files):
     logger.warning(f"转存失败文件 ({len(transfer_failed_files)}个):")
     for index, item in enumerate(transfer_failed_files[:10], 1):
         file_path = item.get("final_path") or item.get("clean_path") or item.get("path")
-        dir_path = item.get("dir_path") or item.get("save_dir") or ""
-        detail = f"  {index}. {dir_path}/{file_path}: {item.get('error')}"
+        dir_path = item.get("save_dir") or item.get("dir_path") or ""
+        normalized_file = str(file_path or "").replace("\\", "/").lstrip("/")
+        normalized_dir = str(dir_path or "").replace("\\", "/").rstrip("/")
+        file_parent = posixpath.dirname(normalized_file)
+        if (
+            not item.get("save_dir")
+            and file_parent
+            and (normalized_dir == file_parent or normalized_dir.endswith(f"/{file_parent}"))
+        ):
+            normalized_file = posixpath.basename(normalized_file)
+        display_path = posixpath.join(normalized_dir, normalized_file)
+        detail = f"  {index}. {display_path}: {item.get('error')}"
         logger.warning(mask_sensitive(detail) or detail)
     if len(transfer_failed_files) > 10:
         logger.warning(f"  ... 还有 {len(transfer_failed_files) - 10} 个文件")

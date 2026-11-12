@@ -23,6 +23,23 @@ import transfer_runner
 
 
 class TransferRunnerSmokeTests(unittest.TestCase):
+    def test_failed_file_log_does_not_duplicate_relative_parent(self):
+        logger = Mock()
+
+        transfer_runner.log_transfer_failed_files(
+            logger,
+            [
+                {
+                    "dir_path": "/save/07、mj/资料",
+                    "clean_path": "07、mj/资料/file.pdf",
+                    "error": "temporary error",
+                }
+            ],
+        )
+
+        messages = [call.args[0] for call in logger.warning.call_args_list]
+        self.assertIn("  1. /save/07、mj/资料/file.pdf: temporary error", messages)
+
     def test_main_runs_success_flow(self):
         config = {
             "config_source": "file",
