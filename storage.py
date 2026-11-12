@@ -1717,12 +1717,21 @@ class BaiduStorage:
                 if not context:
                     return {"success": False, "error": "获取分享文件列表失败"}
 
-                # A selected share directory is the scan root, not an extra level
-                # in the destination. Candidate paths are already relative to this
-                # directory, so write them directly below SAVE_DIR.
                 transfer_target_dir = save_dir
                 legacy_source_dir = None
-                if not share_path and self._can_try_dir_fast_path(
+                shared_paths = context.get("shared_paths") or []
+                if (
+                    save_dir
+                    and len(shared_paths) == 1
+                    and getattr(shared_paths[0], "is_dir", False)
+                ):
+                    # The streaming path trims the selected share folder name from
+                    # every candidate path. Keep that folder in the destination so
+                    # filtered transfers preserve the same outer directory layout
+                    # as the whole-directory fast path.
+                    transfer_target_dir = self._dir_fast_path_target_dir(context, save_dir)
+                    legacy_source_dir = save_dir
+                if self._can_try_dir_fast_path(
                     context, save_dir, regex_pattern, regex_replace, folder_filter
                 ):
                     fast_path_result = self._try_transfer_dir_fast_path(
