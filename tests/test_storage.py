@@ -2789,9 +2789,7 @@ class BaiduStorageFlowTests(unittest.TestCase):
         self.storage._load_share_entries = Mock(return_value=entry_context)
         self.storage._transfer_share_streaming = Mock(return_value={"success": True})
 
-        result = self.storage.transfer_share(
-            "url", save_dir="/save", share_path="/共享资料/course"
-        )
+        result = self.storage.transfer_share("url", save_dir="/save", share_path="/共享资料/course")
 
         self.assertTrue(result["success"])
         self.storage.client.transfer_shared_paths.assert_not_called()
