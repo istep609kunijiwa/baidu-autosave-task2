@@ -547,9 +547,33 @@ class SharedPathServiceTests(unittest.TestCase):
             self.service._trim_shared_root(f"/{relative_file}", root.lstrip("/")),
         )
 
-    def test_list_shared_files_does_not_leak_sharelink_mount_without_leading_slash(self):
+    def test_trim_shared_root_accepts_different_internal_mount_aliases(self):
+        root = "/sharelink2121072713-800191915763097/高级信息系统项目管理师"
+        aliased_file = (
+            "sharelink0-800191915763097/高级信息系统项目管理师/01-27年5月【更新中】/07、mj/file.pdf"
+        )
+
+        self.assertEqual(
+            "01-27年5月【更新中】/07、mj/file.pdf",
+            self.service._trim_shared_root(aliased_file, root),
+        )
+
+    def test_trim_shared_root_does_not_merge_different_share_ids(self):
+        root = "/sharelink2121072713-800191915763097/高级信息系统项目管理师"
+        other_share_file = (
+            "sharelink0-999999999999999/高级信息系统项目管理师/01-27年5月【更新中】/file.pdf"
+        )
+
+        self.assertEqual(
+            other_share_file,
+            self.service._trim_shared_root(other_share_file, root),
+        )
+
+    def test_list_shared_files_does_not_leak_different_sharelink_mount_alias(self):
         selected_dir = SimpleNamespace(
-            path=("/sharelink0-800191915763097/高级信息系统项目管理师/01-27年5月【更新中】"),
+            path=(
+                "/sharelink2121072713-800191915763097/高级信息系统项目管理师/01-27年5月【更新中】"
+            ),
             is_dir=True,
             uk=1,
             share_id=2,

@@ -66,6 +66,33 @@ class SharedPathService:
         normalized = posixpath.normpath(f"/{normalized.lstrip('/')}")
         return "" if normalized == "/" else normalized.lstrip("/")
 
+    @staticmethod
+    def _internal_share_mount_id(path_part):
+        """Return the stable share id encoded in a Baidu internal mount."""
+        suffix = str(path_part or "").removeprefix("sharelink")
+        mount_id, separator, share_id = suffix.partition("-")
+        if not (separator and mount_id.isdigit() and share_id.isdigit()):
+            return None
+        return share_id
+
+    @classmethod
+    def _trim_shared_mount_alias(cls, normalized_path, normalized_root):
+        """Trim equivalent Baidu mount aliases such as sharelink0/sharelink<uk>."""
+        path_parts = normalized_path.split("/")
+        root_parts = normalized_root.split("/")
+        if not path_parts or not root_parts:
+            return None
+        path_share_id = cls._internal_share_mount_id(path_parts[0])
+        root_share_id = cls._internal_share_mount_id(root_parts[0])
+        if not path_share_id or path_share_id != root_share_id:
+            return None
+
+        real_root_parts = root_parts[1:]
+        real_path_root = path_parts[1 : 1 + len(real_root_parts)]
+        if real_path_root != real_root_parts:
+            return None
+        return "/".join(path_parts[1 + len(real_root_parts) :])
+
     def select_shared_path(self, shared_paths, selected_path):
         """Return the single share entry selected by a Baidu ``#list/path`` fragment."""
         paths = list(shared_paths or [])
@@ -152,6 +179,9 @@ class SharedPathService:
                 return ""
             if normalized_path.startswith(root_prefix):
                 return normalized_path[len(root_prefix) :]
+            alias_trimmed = cls._trim_shared_mount_alias(normalized_path, normalized_root)
+            if alias_trimmed is not None:
+                return alias_trimmed
 
         return normalized_path
 
