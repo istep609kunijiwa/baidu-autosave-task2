@@ -1720,8 +1720,12 @@ class BaiduStorage:
                 transfer_target_dir = save_dir
                 legacy_source_dir = None
                 shared_paths = context.get("shared_paths") or []
+                # An explicit share_path is already the requested scan root.
+                # CandidateFilter makes its children relative to that root, so
+                # appending the selected directory again would duplicate it.
                 if (
-                    save_dir
+                    not share_path
+                    and save_dir
                     and len(shared_paths) == 1
                     and getattr(shared_paths[0], "is_dir", False)
                 ):
@@ -1731,7 +1735,7 @@ class BaiduStorage:
                     # as the whole-directory fast path.
                     transfer_target_dir = self._dir_fast_path_target_dir(context, save_dir)
                     legacy_source_dir = save_dir
-                if self._can_try_dir_fast_path(
+                if not share_path and self._can_try_dir_fast_path(
                     context, save_dir, regex_pattern, regex_replace, folder_filter
                 ):
                     fast_path_result = self._try_transfer_dir_fast_path(

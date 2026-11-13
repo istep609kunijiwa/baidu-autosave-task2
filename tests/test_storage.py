@@ -2840,6 +2840,69 @@ class BaiduStorageFlowTests(unittest.TestCase):
             "/save",
         )
 
+    def test_transfer_share_flattens_explicit_share_path_when_regex_is_set(self):
+        shared_dir = SimpleNamespace(is_dir=True, fs_id=10, path="/share/course")
+        entry_context = {
+            "shared_paths": [shared_dir],
+            "uk": 1,
+            "share_id": 2,
+            "bdstoken": "token",
+        }
+        self.storage._normalize_save_dir = Mock(return_value="/save/course")
+        self.storage._load_share_entries = Mock(return_value=entry_context)
+        self.storage._transfer_share_streaming = Mock(return_value={"success": True})
+
+        result = self.storage.transfer_share(
+            "url",
+            save_dir="/save/course",
+            regex_pattern="old",
+            share_path="/共享资料/course",
+        )
+
+        self.assertTrue(result["success"])
+        self.storage.client.transfer_shared_paths.assert_not_called()
+        self.storage._transfer_share_streaming.assert_called_once_with(
+            entry_context,
+            "url",
+            "/save/course",
+            "old",
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+    def test_transfer_share_flattens_explicit_share_path_without_filters(self):
+        shared_dir = SimpleNamespace(is_dir=True, fs_id=10, path="/share/course")
+        entry_context = {
+            "shared_paths": [shared_dir],
+            "uk": 1,
+            "share_id": 2,
+            "bdstoken": "token",
+        }
+        self.storage._normalize_save_dir = Mock(return_value="/save/course")
+        self.storage._load_share_entries = Mock(return_value=entry_context)
+        self.storage._transfer_share_streaming = Mock(return_value={"success": True})
+
+        result = self.storage.transfer_share(
+            "url", save_dir="/save/course", share_path="/共享资料/course"
+        )
+
+        self.assertTrue(result["success"])
+        self.storage.client.transfer_shared_paths.assert_not_called()
+        self.storage._transfer_share_streaming.assert_called_once_with(
+            entry_context,
+            "url",
+            "/save/course",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
     def test_transfer_share_migrates_matching_legacy_flat_files_into_outer_folder(self):
         shared_dir = SimpleNamespace(
             is_dir=True,
