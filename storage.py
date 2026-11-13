@@ -15,7 +15,11 @@ from utils import handle_error_and_notify, ErrorCollector, mask_share_url
 import storage_rename
 import storage_streaming
 import storage_transfer_plan
-from config_utils import build_retry_share_config, parse_share_links_from_text
+from config_utils import (
+    build_retry_share_config,
+    parse_share_links_from_text,
+    share_config_state_key,
+)
 from env_utils import read_non_negative_float_env, read_positive_int_env
 from storage_constants import (
     BATCH_SHARE_DELAY as BATCH_SHARE_DELAY,
@@ -242,6 +246,11 @@ class BaiduStorage:
 
         if transfer_failed_files and source_config:
             record["retry_config"] = build_retry_share_config(source_config)
+        if source_config:
+            record["state_key"] = share_config_state_key(source_config)
+        if result.get("source_snapshot_complete"):
+            record["source_snapshot_complete"] = True
+            record["source_files"] = result.get("source_files", [])
         return record
 
     def _record_batch_result(self, counters, result_record):

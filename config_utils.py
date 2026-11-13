@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import hashlib
 import os
 import posixpath
 import re
@@ -62,6 +63,12 @@ def retry_share_config_key(config: Dict[str, Any]) -> str:
         sort_keys=True,
         default=str,
     )
+
+
+def share_config_state_key(config: Dict[str, Any]) -> str:
+    """Return a stable, non-secret identifier for persisted subscription state."""
+    raw_key = retry_share_config_key(config).encode("utf-8")
+    return hashlib.sha256(raw_key).hexdigest()
 
 
 def _normalize_share_path(value: Any) -> Optional[str]:
@@ -160,6 +167,7 @@ def normalize_config_aliases(data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     )
     normalized["regex_pattern"] = raw.get("regex_pattern") or raw.get("REGEX_PATTERN")
     normalized["regex_replace"] = raw.get("regex_replace") or raw.get("REGEX_REPLACE")
+    normalized["mirror_delete"] = raw.get("mirror_delete") or raw.get("TRANSFERSHARE_MIRROR_DELETE")
     return normalized
 
 
@@ -175,6 +183,7 @@ def load_env_config(env: Optional[Mapping[str, str]] = None) -> Dict[str, Any]:
             "EXCLUDE_FOLDER_FILTER": values.get("EXCLUDE_FOLDER_FILTER"),
             "REGEX_PATTERN": values.get("REGEX_PATTERN"),
             "REGEX_REPLACE": values.get("REGEX_REPLACE"),
+            "TRANSFERSHARE_MIRROR_DELETE": values.get("TRANSFERSHARE_MIRROR_DELETE"),
         }
     )
 

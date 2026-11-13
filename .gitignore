@@ -67,4 +67,8 @@ config.json.bak-*
 .transfershare_failed_transfers.json.tmp
 .transfershare_failed_transfers.json.enc
 .transfershare_failed_transfers.json.enc.tmp
+.transfershare_mirror_state.json
+.transfershare_mirror_state.json.tmp
+.transfershare_mirror_state.json.enc
+.transfershare_mirror_state.json.enc.tmp
 .omc/

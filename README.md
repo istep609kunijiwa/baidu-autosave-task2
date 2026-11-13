@@ -76,6 +76,7 @@ python save_baidu_cookies.py --repo YOUR_USERNAME/transfershare
 | `SAVE_DIR` | | Default save directory (default: `/AutoTransfer`) |
 | `WECHAT_WEBHOOK` | | Enterprise WeChat webhook URL |
 | `TRANSFERSHARE_STATE_KEY` | | Encryption key for cross-run failure state (`openssl rand -base64 32`) |
+| `TRANSFERSHARE_MIRROR_DELETE` | | Set to `true` to safely mirror source file deletions; requires `TRANSFERSHARE_STATE_KEY` |
 
 **Step 4 — Done!** The workflow runs at UTC 0:17, 6:17, 12:17, 18:17 automatically. Or trigger manually from the Actions tab.
 
@@ -182,6 +183,7 @@ python save_baidu_cookies.py --repo YOUR_USERNAME/transfershare
 | `REGEX_PATTERN` | | 只转存完整相对路径匹配该正则的文件 |
 | `REGEX_REPLACE` | | 与 `REGEX_PATTERN` 配合重命名匹配文件 |
 | `TRANSFERSHARE_STATE_KEY` | | 加密失败清单的密钥，用 `openssl rand -base64 32` 生成 |
+| `TRANSFERSHARE_MIRROR_DELETE` | | 设为 `true` 后安全同步共享端的文件删除；必须同时配置状态密钥 |
 
 大型分享默认在 Actions 中使用以下受控参数：共享目录扫描并发为 2、每 250 个共享文件执行一次候选分析、每 100 个新增文件提交一次转存。这样可以重叠目录请求的网络等待，并在完整扫描结束前逐步保存新增文件。需要自建运行环境时可通过 `TRANSFERSHARE_SHARED_SCAN_CONCURRENCY`、`TRANSFERSHARE_SCAN_BATCH_SIZE` 和 `TRANSFERSHARE_TRANSFER_FLUSH_SIZE` 调整；目录并发不建议超过 4，以免触发百度限流。
 
@@ -192,7 +194,7 @@ REGEX_PATTERN=^(?!.*(?:微信|扫码|包邮)).*$
 EXCLUDE_FOLDER_FILTER=微信|扫码|包邮
 ```
 
-过滤只影响之后的转存，不会删除已经保存到网盘中的内容。
+默认只增不删。只有显式启用 `TRANSFERSHARE_MIRROR_DELETE=true` 时，才会同步共享端删除：首次运行只建立基线；文件连续两次完整扫描都消失，且目标文件 MD5 未被用户修改后才删除。扫描或转存失败、共享快照异常为空、目标文件已变更时均不会删除，空目录也会保留。
 
 <a id="share-link-format"></a>
 
@@ -229,7 +231,7 @@ https://pan.baidu.com/s/xxxxxx?pwd=abcd#list/path=%2Fsharelink123-456%2F%E5%AD%9
 
 - 定时任务每 6 小时的第 17 分钟触发，并通过并发锁避免同一分支重复运行。
 - 第一次转存尝试的超时为 7 分钟，第二次尝试的超时为 10 分钟。
-- 加密失败状态保存在 `.transfershare_failed_transfers.json.enc`；密钥由 `TRANSFERSHARE_STATE_KEY` 提供。
+- 加密失败状态和镜像基线分别保存在 `.transfershare_failed_transfers.json.enc`、`.transfershare_mirror_state.json.enc`；密钥由 `TRANSFERSHARE_STATE_KEY` 提供。
 - checkout 使用 `persist-credentials: false`，测试 workflow 会执行 `actionlint`。
 - 单元测试覆盖 Python 3.9 与 Python 3.12。
 

@@ -15,6 +15,7 @@ from storage_constants import (
     TRANSFER_PIPELINE_ENABLED,
 )
 from storage_errors import classify_storage_error, parse_share_error
+from storage_rules import is_safe_relative_target_path
 from utils import handle_error_and_notify
 
 
@@ -85,6 +86,17 @@ def transfer_share_streaming(
     successful_transfer_items = []
     transfer_failed_files = []
     dir_error = None
+    source_snapshot = {}
+    ambiguous_snapshot_paths = set()
+
+    def attach_source_snapshot(result):
+        result["source_snapshot_complete"] = True
+        result["source_files"] = [
+            {"path": path, "md5": md5}
+            for path, md5 in sorted(source_snapshot.items())
+            if path not in ambiguous_snapshot_paths
+        ]
+        return result
 
     transfer_executor = None
     pending_transfer = {"future": None, "items": None}
@@ -193,6 +205,16 @@ def transfer_share_streaming(
         shared_file_batch.clear()
         summary.update(batch_summary)
 
+        for candidate in candidates:
+            relative_path = str(candidate.get("final_path") or "").replace("\\", "/").lstrip("/")
+            if not relative_path or not is_safe_relative_target_path(relative_path):
+                continue
+            md5 = candidate.get("src_md5")
+            if relative_path in source_snapshot and source_snapshot[relative_path] != md5:
+                ambiguous_snapshot_paths.add(relative_path)
+                continue
+            source_snapshot[relative_path] = md5
+
         new_relative_dirs = set(relative_dirs) - scanned_relative_dirs
         if new_relative_dirs:
             local_files_dict.update(
@@ -293,22 +315,26 @@ def transfer_share_streaming(
             message = f"已整理 {len(migrated_files)} 个旧版平铺文件到外层目录"
             if progress_callback:
                 progress_callback("success", message)
-            return {
-                "success": True,
-                "partial": False,
-                "message": message,
-                "transferred_files": migrated_files,
-                "completed_count": len(migrated_files),
-                "transfer_success_count": 0,
-                "migrated_count": len(migrated_files),
-            }
+            return attach_source_snapshot(
+                {
+                    "success": True,
+                    "partial": False,
+                    "message": message,
+                    "transferred_files": migrated_files,
+                    "completed_count": len(migrated_files),
+                    "transfer_success_count": 0,
+                    "migrated_count": len(migrated_files),
+                }
+            )
         if progress_callback:
             progress_callback("info", "没有找到需要处理的文件")
-        return {
-            "success": True,
-            "skipped": True,
-            "message": "没有新文件需要转存",
-        }
+        return attach_source_snapshot(
+            {
+                "success": True,
+                "skipped": True,
+                "message": "没有新文件需要转存",
+            }
+        )
 
     rename_result = storage._rename_transferred_files(
         successful_transfer_items, transfer_target_dir, progress_callback
@@ -336,4 +362,6 @@ def transfer_share_streaming(
             )
         else:
             result["error"] = f"{result.get('error', '转存失败')}；扫描共享文件失败: {error_msg}"
+    if not scan_error and not dir_error:
+        attach_source_snapshot(result)
     return result

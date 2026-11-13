@@ -500,6 +500,9 @@ class BaiduClientAdapter:
     def rename(self, source, target):
         return self.call_with_retry(self.client.rename, source, target, suppress_retry_abort=False)
 
+    def remove(self, *paths):
+        return self.call_with_retry(self.client.remove, *paths, suppress_retry_abort=False)
+
     def access_shared(self, share_url, pwd=None):
         return self.call_with_retry(self.client.access_shared, share_url, pwd)
 

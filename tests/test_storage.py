@@ -1595,7 +1595,13 @@ class BaiduStorageFlowTests(unittest.TestCase):
         result = self.storage.transfer_share("https://pan.baidu.com/s/abc")
 
         self.assertEqual(
-            {"success": True, "skipped": True, "message": "没有新文件需要转存"},
+            {
+                "success": True,
+                "skipped": True,
+                "message": "没有新文件需要转存",
+                "source_snapshot_complete": True,
+                "source_files": [],
+            },
             result,
         )
         self.storage._scan_local_files_dict.assert_not_called()

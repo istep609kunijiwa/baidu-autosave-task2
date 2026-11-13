@@ -23,6 +23,7 @@ from logger import (
     log_shutdown,
     log_config_loaded,
 )
+from mirror_state import reconcile_mirror_deletions
 from config_utils import (
     build_retry_share_config,
     load_runtime_config,
@@ -679,6 +680,9 @@ def execute_transfer_workflow(storage, logger, config):
     persist_failed_records_safely(
         logger, failed_records_load_error, failed_records, all_failed_records
     )
+    mirror_summary = reconcile_mirror_deletions(storage, logger, config, result)
+    if mirror_summary.get("enabled"):
+        result["mirror_delete"] = mirror_summary
     return result
 
 

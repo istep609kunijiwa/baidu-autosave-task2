@@ -313,6 +313,8 @@ export REGEX_REPLACE=""
 export TRANSFERSHARE_SHARED_SCAN_CONCURRENCY="2"
 export TRANSFERSHARE_SCAN_BATCH_SIZE="250"
 export TRANSFERSHARE_TRANSFER_FLUSH_SIZE="100"
+# 可选：安全同步共享端删除（必须配置持久化状态密钥）
+export TRANSFERSHARE_MIRROR_DELETE="true"
 
 # 运行程序
 python transfer_runner.py
@@ -321,7 +323,8 @@ python transfer_runner.py
 **GitHub Actions 环境：**
 1. 打开仓库的 Settings → Secrets and variables → Actions
 2. 添加对应的 Secret（推荐使用 `save_baidu_cookies.py --repo owner/repo` 自动添加）
-3. 可选添加 `TRANSFERSHARE_STATE_KEY`：用于加密跨 run 持久化失败清单，建议用 `openssl rand -base64 32` 生成
+3. 可选添加 `TRANSFERSHARE_STATE_KEY`：用于加密跨 run 的失败清单和镜像删除基线，建议用 `openssl rand -base64 32` 生成
+4. 如需同步共享端删除，再添加 `TRANSFERSHARE_MIRROR_DELETE=true`；没有状态密钥时程序会拒绝执行镜像删除
 
 过滤相关 Secret 均为可选：
 - `FOLDER_FILTER`：只扫描名称匹配正则的文件夹
@@ -336,9 +339,9 @@ REGEX_PATTERN=^(?!.*(?:微信|扫码|包邮)).*$
 EXCLUDE_FOLDER_FILTER=微信|扫码|包邮
 ```
 
-过滤规则只作用于后续转存，不会删除网盘中已经存在的内容。
+默认过滤规则只作用于后续转存，不会删除网盘中已经存在的内容。启用 `TRANSFERSHARE_MIRROR_DELETE=true` 后，程序会以过滤后的共享文件为镜像范围：首次运行建立基线，文件连续两次完整扫描都缺失且目标 MD5 未改变时才删除。扫描/转存失败、空快照、目标文件已修改时不会删除；每轮默认最多删除 100 个文件，可用 `TRANSFERSHARE_MIRROR_DELETE_MAX_FILES` 调整。
 
-注意：失败清单可能包含分享链接、提取码和文件路径。workflow 只缓存 `.transfershare_failed_transfers.json.enc`；未配置 `TRANSFERSHARE_STATE_KEY` 时会跳过跨 run 状态恢复和保存，不会退回到明文缓存。
+注意：失败清单和镜像基线可能包含分享配置及文件路径。workflow 只缓存加密后的 `.transfershare_failed_transfers.json.enc` 与 `.transfershare_mirror_state.json.enc`；未配置 `TRANSFERSHARE_STATE_KEY` 时会跳过跨 run 状态恢复和保存，不会退回到明文缓存，也不会执行镜像删除。
 
 **GitHub Actions 运维与安全：**
 - 定时转存每天北京时间 08:17、20:17 触发，并通过并发锁串行同一分支的转存任务，不取消正在运行的任务。

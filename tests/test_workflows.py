@@ -97,13 +97,31 @@ class WorkflowStaticTests(unittest.TestCase):
         self.assertIn("actions/cache/restore@v4", content)
         self.assertIn("actions/cache/save@v4", content)
         self.assertIn("TRANSFERSHARE_STATE_KEY", content)
-        self.assertIn("path: .transfershare_failed_transfers.json.enc", content)
+        self.assertIn(".transfershare_failed_transfers.json.enc", content)
+        self.assertIn(".transfershare_mirror_state.json.enc", content)
         self.assertIn("openssl enc -aes-256-cbc", content)
-        self.assertIn("printf '[]\\n'", content)
+        self.assertIn("encrypt_state .transfershare_failed_transfers.json '[]'", content)
         self.assertIn('rm -f "$state_file"', content)
         self.assertNotIn("upload-artifact", content)
         self.assertNotIn("GITHUB_ENV", content)
         self.assertNotIn("path: .transfershare_failed_transfers.json\n", content)
+
+    def test_baidu_transfer_workflow_enables_opt_in_mirror_delete(self):
+        _, workflow = load_workflow(".github/workflows/baidu-transfer.yml")
+        transfer_step = next(
+            step
+            for step in workflow_steps(workflow, "transfer")
+            if step.get("name") == "Run transfer task"
+        )
+
+        self.assertEqual(
+            "${{ secrets.TRANSFERSHARE_MIRROR_DELETE }}",
+            transfer_step["env"]["TRANSFERSHARE_MIRROR_DELETE"],
+        )
+        self.assertEqual(
+            "${{ steps.failed_state.outputs.enabled }}",
+            transfer_step["env"]["TRANSFERSHARE_MIRROR_STATE_ENABLED"],
+        )
 
     def test_baidu_transfer_workflow_skips_tests_and_redundant_build(self):
         content, _ = load_workflow(".github/workflows/baidu-transfer.yml")
