@@ -92,10 +92,10 @@ jobs:
         REGEX_PATTERN: ${{ secrets.REGEX_PATTERN }}
         REGEX_REPLACE: ${{ secrets.REGEX_REPLACE }}
         TRANSFERSHARE_FAILED_STATE_ENABLED: ${{ steps.failed_state.outputs.enabled }}
-        TRANSFERSHARE_SHARED_SCAN_CONCURRENCY: "12"
+        TRANSFERSHARE_SHARED_SCAN_CONCURRENCY: "10"
         TRANSFERSHARE_LOCAL_SCAN_CONCURRENCY: "4"
         TRANSFERSHARE_SCAN_BATCH_SIZE: "1000"
-        TRANSFERSHARE_TRANSFER_FLUSH_SIZE: "100"
+        TRANSFERSHARE_TRANSFER_FLUSH_SIZE: "50"
       run: |
         echo "开始执行转存任务"
         echo "超时时间: 30 分钟"

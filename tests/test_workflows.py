@@ -42,7 +42,8 @@ class WorkflowStaticTests(unittest.TestCase):
         content, workflow = load_workflow(".github/workflows/baidu-transfer.yml")
 
         self.assertEqual({"contents": "read"}, workflow["permissions"])
-        self.assertIn("- cron: '17 0,12 * * *'", content)
+        self.assertIn("- cron: '17 0 * * *'", content)
+        self.assertIn("- cron: '17 12 * * *'", content)
         self.assertNotIn("- cron: '17 */6 * * *'", content)
 
     def test_baidu_transfer_workflow_has_safe_concurrency(self):
@@ -65,10 +66,11 @@ class WorkflowStaticTests(unittest.TestCase):
         steps = workflow_steps(workflow, "transfer")
         transfer_step = next(step for step in steps if step.get("name") == "Run transfer task")
 
-        self.assertEqual(20, transfer_step["timeout-minutes"])
-        self.assertEqual("2", transfer_step["env"]["TRANSFERSHARE_SHARED_SCAN_CONCURRENCY"])
-        self.assertEqual("250", transfer_step["env"]["TRANSFERSHARE_SCAN_BATCH_SIZE"])
-        self.assertEqual("100", transfer_step["env"]["TRANSFERSHARE_TRANSFER_FLUSH_SIZE"])
+        self.assertEqual(30, transfer_step["timeout-minutes"])
+        self.assertEqual("10", transfer_step["env"]["TRANSFERSHARE_SHARED_SCAN_CONCURRENCY"])
+        self.assertEqual("4", transfer_step["env"]["TRANSFERSHARE_LOCAL_SCAN_CONCURRENCY"])
+        self.assertEqual("1000", transfer_step["env"]["TRANSFERSHARE_SCAN_BATCH_SIZE"])
+        self.assertEqual("50", transfer_step["env"]["TRANSFERSHARE_TRANSFER_FLUSH_SIZE"])
         self.assertNotIn("TRANSFERSHARE_SUPPRESS_RESULT_NOTIFICATION", transfer_step["env"])
         self.assertFalse(
             any(step.get("name") == "Run transfer task (Second attempt)" for step in steps)
